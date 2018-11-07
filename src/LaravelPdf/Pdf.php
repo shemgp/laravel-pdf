@@ -15,9 +15,12 @@ class Pdf {
 
 	protected $config = [];
 
+	protected $job = null;
+
 	public function __construct($html = '', $config = [])
 	{
 		$this->config = $config;
+
 
 		$mpdf_config = [
 			'mode'                 =>   $this->getConfig('mode'),              // mode - default ''
@@ -46,6 +49,12 @@ class Pdf {
 		$this->mpdf->SetKeywords      ( $this->getConfig('keywords') );
 		$this->mpdf->SetDisplayMode   ( $this->getConfig('display_mode') );
 
+	        if (isset($this->config['job']) && $this->config['job'])
+		{
+			$this->job = $this->config['job'];
+			$this->job->expand_max(strlen($html), 'Building PDF...');
+		}
+
 		$this->writeHTMLInChunks($html);
 	}
 
@@ -63,7 +72,13 @@ class Pdf {
 				{
 					$html_chunk = substr($html, $previous_cut, $ending_char - $previous_cut + 1);
 
+
 					$this->mpdf->WriteHTML($html_chunk);
+
+					if ($this->job)
+					{
+						$this->job->inc($ending_char - $previous_cut + 1);
+					}
 
 					$previous_cut = $i + strlen($ending_tag);
 				}
@@ -71,9 +86,15 @@ class Pdf {
 		}
 		if ($previous_cut < $html_length - 1)
 		{
-			$html_chunk = substr($html, $previous_cut, strlen($html) - $previous_cut);
+			$html_chunk = substr($html, $previous_cut, $html_length - $previous_cut + 1);
 
 			$this->mpdf->WriteHTML($html_chunk);
+
+			if ($this->job)
+			{
+				$this->job->inc(strlen($html_chunk));
+			}
+
 		}
 	}
 
